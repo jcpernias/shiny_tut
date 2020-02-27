@@ -5,7 +5,6 @@ library(magrittr)
 library(ec1047)
 
 regions <- list(
-    "España" = "ESP",
     "Andalucía" = "AND",
     "Aragón" = "ARA",
     "Asturias" = "AST",
@@ -27,6 +26,8 @@ regions <- list(
     "Melilla" = "MEL"
 )
 
+lorenz_esp <- ecv2018 %$%
+    lorenz(ydisp_cu, weight * people)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -54,15 +55,15 @@ ui <- fluidPage(
 server <- function(input, output) {
 
     output$lorenzPlot <- renderPlot({
-        income_db <- ecv2018
-        if (input$region != "ESP")
-            income_db <- income_db %>% filter(region == input$region)
-
-        plot_data <- income_db %$%
+        region_name <- names(regions)[which(regions == input$region)]
+        lorenz_reg <- ecv2018 %>%
+            filter(region == input$region) %$%
             lorenz(ydisp_cu, weight * people)
 
+        plot_data <- bind_rows(add_column(lorenz_esp, region = "España"),
+                               add_column(lorenz_reg, region = region_name))
         plot_data %>%
-            ggplot(aes(x = x, y = y)) +
+            ggplot(aes(x = x, y = y, colour = region)) +
             geom_line() +
             geom_line(data = tibble(x = c(0, 1), y = c(0, 1)), color = 'black') +
             coord_fixed() +
