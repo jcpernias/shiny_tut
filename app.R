@@ -1,33 +1,51 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
+library(tidyverse)
+library(magrittr)
+
+library(ec1047)
+
+regions <- list(
+    "España" = "ESP",
+    "Andalucía" = "AND",
+    "Aragón" = "ARA",
+    "Asturias" = "AST",
+    "Baleares" = "BAL",
+    "Canarias" = "CNR",
+    "Cantabria" = "CNT",
+    "Castilla y León" = "CYL",
+    "Castilla-La Mancha" = "CLM",
+    "Cataluña" = "CAT",
+    "Comunidad Valenciana" = "VAL",
+    "Extremadura" = "EXT",
+    "Galicia" = "GAL",
+    "Madrid" = "MAD",
+    "Murcia" = "MUR",
+    "Navarra" = "NAV",
+    "País Vasco" = "PVA",
+    "La Rioja" = "RIO",
+    "Ceuta" = "CEU",
+    "Melilla" = "MEL"
+)
+
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
     # Application title
-    titlePanel("Old Faithful Geyser Data"),
+    titlePanel("Curva de Lorenz"),
 
-    # Sidebar with a slider input for number of bins 
+    # Sidebar with a slider input for number of bins
     sidebarLayout(
         sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
+            selectInput("region",
+                        "Comunidad autónoma:",
+                        choices = regions,
+                        selected = 1)
         ),
 
         # Show a plot of the generated distribution
         mainPanel(
-           plotOutput("distPlot")
+           plotOutput("lorenzPlot")
         )
     )
 )
@@ -35,15 +53,27 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
 
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
+    output$lorenzPlot <- renderPlot({
+        income_db <- ecv2018
+        if (input$region != "ESP")
+            income_db <- income_db %>% filter(region == input$region)
 
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white')
+        plot_data <- income_db %$%
+            lorenz(ydisp_cu, weight * people)
+
+        plot_data %>%
+            ggplot(aes(x = x, y = y)) +
+            geom_line() +
+            geom_line(data = tibble(x = c(0, 1), y = c(0, 1)), color = 'black') +
+            coord_fixed() +
+            scale_x_continuous(limits = c(0, 1), breaks = (0:5)/5) +
+            scale_y_continuous(limits = c(0, 1), breaks = (0:5)/5) +
+            theme_classic() +
+            theme(axis.title.y = element_text(angle = 0),
+                  panel.grid.major = element_line(color = "gray95"),
+                  panel.grid.minor = element_line(color = "gray85", size = 0.1))
     })
 }
 
-# Run the application 
+# Run the application
 shinyApp(ui = ui, server = server)
